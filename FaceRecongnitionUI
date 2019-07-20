@@ -1,0 +1,151 @@
+
+"""
+Created on Sun Mar 31 17:33:00 2019
+
+@author: dark
+"""
+
+import pickle
+import datetime
+import os
+import face_recognition
+import cv2
+from multiprocessing import Process,freeze_support
+from flask import Flask,render_template,request
+from faceMatch import FaceMatch
+from Connection import MongoConnection
+import base64
+
+
+
+app1 = Flask('__name__')
+
+@app1.route('/',methods=['GET','POST'])
+def index():
+    return render_template("thisServer.html")
+
+@app1.route('/start',methods=['GET','POST'])
+def start(): 
+    
+    userid=None
+    password=None
+    userid=request.form.get('username')
+    password=request.form.get('password')
+    print(str(userid)+"\n"+str(password))
+    if  password=='1234' and userid=="1@gmail.com":
+        return render_template("parallaxServer.html")
+    else:
+        return "Error occured"
+    
+@app1.route('/faceRecognition',methods=['GET','POST'])
+def faceRecog():     
+    FaceMatch.doFaceMatch()
+    return render_template("parallaxServer.html")
+    
+    
+@app1.route('/ExportImages',methods=['GET','POST'])
+def Export():  
+    
+    p1 = Process(target=detectFaces)
+    
+    p1.start()
+    return render_template("parallaxServer.html")
+@app1.route('/retriveImages',methods=['GET','POST'])        
+def retriveImages():
+    p2 = Process(target=doretriveImages)
+    
+    p2.start()
+    return render_template("parallaxServer.html")
+    
+    
+    
+    
+def detectFaces():
+    
+
+        imagesNames=os.listdir("/home/dark/Programing/Major/KnownImages")
+        counter=0
+        face_cascade = cv2.CascadeClassifier('/home/dark/Documents/haarcascades/haarcascade_frontalface_default.xml')
+            
+            
+        cap = cv2.VideoCapture('http://192.168.0.102:8080/video')
+        path ='/home/dark/Programing/Major/KnownImages'
+        imgCtr=0
+        
+        
+        
+        while 1:
+            ret, img = cap.read()
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+        
+            for (x,y,w,h) in faces:
+                
+        #=============== Image Naming ===================================
+        
+                sysTime = datetime.datetime.now()
+                deviceTime=sysTime.strftime("%d_%m_%Y_%H_%M_%S_%f")
+                imageName = "Cam1_"+deviceTime+".png"
+                
+        #=============== Image Naming block complete ====================
+                
+                cv2.rectangle(img,(x,y),(x+w,y+h),(57,255,20),2)
+                #roi_gray = gray[y:y+h, x:x+w]
+                #roi_color = img[y:y+h, x:x+w]
+                
+                sub_face = img[y:y+h, x:x+w]
+                imgCtr+=1
+                
+                if(imgCtr==5):
+                    cv2.imwrite(os.path.join(path , imageName), sub_face)
+                    imgCtr=0    
+                    
+            cv2.imshow('Press ESC to exit',img)
+            k = cv2.waitKey(30) & 0xff
+            if k == 27:
+                break
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        
+        print("Image conversion started\n")
+        imagesNames=os.listdir("/home/dark/Programing/Major/KnownImages")
+        ################## IMAGE TO TEXT ####################
+        for name in imagesNames:
+            
+            known_image = face_recognition.load_image_file("/home/dark/Programing/Major/KnownImages/"+name)
+            known_face_encoding = face_recognition.face_encodings(known_image)  
+            counter=counter+1
+            textFileName="/home/dark/Programing/Major/ImageToText/"+name+".txt"
+            with open (textFileName,"wb") as fp:
+                pickle.dump(known_face_encoding,fp)
+                
+        print("Image converted:"+str(counter))
+        ################## IMAGE TO TEXT ####################
+def doretriveImages():
+      
+
+    a=[]
+    collect=MongoConnection.getConnection()
+    dits=collect.find({},{"Image" : 1})
+    i=0
+    for dit in dits: 
+        
+        a.append(dit['Image'])    
+        imgdata = base64.b64decode(a[i])
+        filename = str(i)+'.png'  
+        with open('/home/dark/Programing/Major/Down_Images/'+filename, 'wb') as f:
+            f.write(imgdata)
+        i=i+1
+    print(str(i)+" Images saved")
+    
+    collect=MongoConnection.getConnection()
+    x=collect.delete_many({})   
+    print(str(x)+"  Images Deleted from Mongo Database")     
+        
+if __name__=='__main__':
+    freeze_support()
+    app1.run(host='0.0.0.0')
+    
+    
+    

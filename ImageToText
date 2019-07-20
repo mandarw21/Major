@@ -1,0 +1,16 @@
+import pickle
+import os
+import face_recognition
+
+imagesNames=os.listdir("/home/dark/Programing/Major/KnownImages")
+counter=0
+for name in imagesNames:
+    
+    known_image = face_recognition.load_image_file("/home/dark/Programing/Major/KnownImages/"+name)
+    known_face_encoding = face_recognition.face_encodings(known_image)  
+    counter=counter+1
+    textFileName="/home/dark/Programing/Major/ImageToText/"+name+".txt"
+    with open (textFileName,"wb") as fp:
+        pickle.dump(known_face_encoding,fp)
+        
+print(counter)

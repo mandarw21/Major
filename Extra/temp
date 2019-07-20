@@ -1,0 +1,2 @@
+pymongo_cursor = db.collection.find()
+all_data = list(pymongo_cursor)

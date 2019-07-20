@@ -1,0 +1,20 @@
+import pickle
+import os
+known_encodings=[] 
+imagesNames=os.listdir("/home/dark/Programing/Major/ImageToText")
+print(imagesNames)
+for name in imagesNames:
+    textFileName="/home/dark/Programing/Major/ImageToText/"+name
+    with open (textFileName,"rb") as fp:
+        a=pickle.load(fp) 
+        known_encodings.append(a)
+        
+print(len(known_encodings))
+
+
+image_to_test = face_recognition.load_image_file("/home/dark/Programing/Major/TestImages/shah2.jpg")
+image_to_test_encoding = face_recognition.face_encodings(image_to_test)[0]
+
+face_distances = face_recognition.face_distance(known_encodings, image_to_test_encoding)
+print("*"*10)
+print(1-face_distances)   
